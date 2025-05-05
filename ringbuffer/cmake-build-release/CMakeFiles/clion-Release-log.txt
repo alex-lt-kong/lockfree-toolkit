@@ -1,0 +1,4 @@
+/home/mamsds/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/home/mamsds/bin/vcpkg/scripts/buildsystems/vcpkg.cmake -G "Unix Makefiles" -S /home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer -B /home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer/cmake-build-release
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer/cmake-build-release

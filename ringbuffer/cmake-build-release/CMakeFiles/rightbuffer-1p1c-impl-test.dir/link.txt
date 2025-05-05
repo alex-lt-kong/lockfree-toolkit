@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG "CMakeFiles/rightbuffer-1p1c-impl-test.dir/rightbuffer-1p1c-impl-test.cpp.o" -o rightbuffer-1p1c-impl-test  /home/mamsds/bin/vcpkg/installed/x64-linux/lib/libgtest.a /home/mamsds/bin/vcpkg/installed/x64-linux/lib/manual-link/libgtest_main.a /home/mamsds/bin/vcpkg/installed/x64-linux/lib/libgmock.a /home/mamsds/bin/vcpkg/installed/x64-linux/lib/libgtest.a

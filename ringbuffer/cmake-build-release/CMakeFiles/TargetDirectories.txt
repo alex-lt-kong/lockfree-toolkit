@@ -1,0 +1,3 @@
+/home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer/cmake-build-release/CMakeFiles/rightbuffer-spsc-impl-test.dir
+/home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer/cmake-build-release/CMakeFiles/edit_cache.dir
+/home/mamsds/repos/proofs-of-concept/cpp/09_lockfree/ringbuffer/cmake-build-release/CMakeFiles/rebuild_cache.dir
