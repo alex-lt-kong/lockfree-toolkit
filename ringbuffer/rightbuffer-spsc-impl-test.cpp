@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 
 #include <format>
-#include <print>
 #include <thread>
 
 using namespace LockFree;
@@ -105,7 +104,7 @@ TEST(RingBufferSPSC, FailedMoveShouldNotClearData) {
 
 TEST(RingBufferSPSC, SingleThreadProduceAndConsume) {
   constexpr std::size_t sz = 1;
-  PoC::LockFree::RingBufferSPSC<int> rb(sz);
+  RingBufferSPSC<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
     EXPECT_TRUE(rb.enqueue(i));
     int ele;
@@ -116,7 +115,7 @@ TEST(RingBufferSPSC, SingleThreadProduceAndConsume) {
 
 TEST(RingBufferSPSC, SingleThreadCantCopyProduceAndConsume) {
   constexpr std::size_t sz = INT16_MAX;
-  PoC::LockFree::RingBufferSPSC<TestClassNotCopyable<std::string>> rb(sz);
+  RingBufferSPSC<TestClassNotCopyable<std::string>> rb(sz);
 
   TestClassNotCopyable<std::string> ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -142,7 +141,7 @@ TEST(RingBufferSPSC, SingleThreadCantCopyProduceAndConsume) {
 
 TEST(RingBufferSPSC, SingleThreadProduceOverflow) {
   constexpr std::size_t sz = INT8_MAX;
-  PoC::LockFree::RingBufferSPSC<int> rb(sz);
+  RingBufferSPSC<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
     if (i < sz)
       EXPECT_TRUE(rb.enqueue(i));
@@ -153,7 +152,7 @@ TEST(RingBufferSPSC, SingleThreadProduceOverflow) {
 
 TEST(RingBufferSPSC, SingleThreadConsumeUnderflow) {
   constexpr std::size_t sz = INT8_MAX;
-  PoC::LockFree::RingBufferSPSC<int> rb(sz);
+  RingBufferSPSC<int> rb(sz);
   for (std::size_t i = 0; i < sz * 2; i++) {
     if (i < sz)
       EXPECT_TRUE(rb.enqueue(i));
