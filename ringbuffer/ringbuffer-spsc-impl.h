@@ -47,7 +47,8 @@ public:
         m_read_ptr(0) {}
 
   // We need to define a new type U to make enqueue() work for lvalue
-  // a new type U makes it a "universal reference":
+  // a new type U makes it a "forwarding reference" (a.k.a. "universal
+  // reference"):
   // https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers
   // Buy T&& is not a universal reference while U&& is?
   // T&& is NOT a universal reference because T is already a fixed type (not
@@ -60,8 +61,11 @@ public:
   bool enqueue(U &&item) {
     // What does `std::memory_order_relaxed` mean?
     // It means that we don't need to synchronize with other threads.
-    size_t tail = m_write_ptr.load(std::memory_order_relaxed);
-    const size_t next_tail = (tail + 1) % m_capacity;
+    auto tail = m_write_ptr.load(std::memory_order_relaxed);
+    auto next_tail = tail + 1;
+    if (next_tail == m_capacity) {
+      next_tail = 0;
+    }
 
     if (next_tail == m_read_ptr.load(std::memory_order_acquire)) {
       // tail + 1 == head , i.e., buffer is full
@@ -80,8 +84,12 @@ public:
       return false;
     }
 
+    auto next_head = head + 1;
+    if (next_head == m_capacity) {
+      next_head = 0;
+    }
     item = std::move(m_buffer[head]);
-    m_read_ptr.store((head + 1) % m_capacity, std::memory_order_release);
+    m_read_ptr.store(next_head, std::memory_order_release);
     return true;
   }
 
