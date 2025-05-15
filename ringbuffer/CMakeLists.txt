@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
 project(ringbuffer)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(GTest CONFIG REQUIRED COMPONENTS GTest GMock)
 include_directories(${GTEST_INCLUDE_DIRS})
