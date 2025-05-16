@@ -1,4 +1,4 @@
-# Lockfree SPSCQueue
+# Lockfree SpscQueue
 
 ## A few interesting questions
 

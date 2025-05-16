@@ -1,0 +1,15 @@
+{
+  "dependencies": [
+    {
+      "name": "gtest",
+      "version>=": "1.16.0#1"
+    },
+    {
+      "name": "boost-interprocess",
+      "version>=": "1.86.0"
+    }
+  ],
+  "builtin-baseline": "65be7019941e1401e02daaba0738cab2c8a4a355",
+  "version": "0.0.1",
+  "name": "lockfree-toolkit"
+}

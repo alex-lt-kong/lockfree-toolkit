@@ -81,7 +81,7 @@ namespace IpcPcQueue.Benchmark
                         sizeof(MyPayload));
                     queue.Init();
                     RunConsumer(queue);
-                    queue.Dispose();
+                    queue.dispose();
                     break;
                 }
                 default:
@@ -110,7 +110,7 @@ namespace IpcPcQueue.Benchmark
             long sampleCount = 0;
             long maxLatencyUs = -1;
             const long stdoutIntervalSec = 5;
-            //var queue = new T(queueName);
+            //var queue = new TImpl(queueName);
             Console.WriteLine("Waiting for messages...");
             while (!evFlag.Value)
             {

@@ -2,11 +2,11 @@
 
 namespace IpcPcQueue.Benchmark;
 
-public class Reference<T>
+public class Reference<TImpl>
 {
-    public T Value { get; set; }
+    public TImpl Value { get; set; }
 
-    public Reference(T initialValue = default)
+    public Reference(TImpl initialValue = default)
     {
         Value = initialValue;
     }

@@ -157,7 +157,7 @@ public unsafe class SpscQueue : IQueue, IDisposable
         _accessor?.Dispose();
         if (_ownership)
         {
-            _mmf?.Dispose();
+            _mmf?.dispose();
             Console.WriteLine($"This process owns the queue at [{_mappedFileName}], so it will release the queue now.");
         }
         else
