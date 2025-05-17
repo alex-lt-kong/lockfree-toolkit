@@ -27,6 +27,12 @@ void producer_func(IRingBuffer<TImpl, T> &q) {
   using namespace std::chrono;
   uint64_t msg = 1;
   T raw_msg;
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    if (raw_msg.size() < sizeof(msg))
+      raw_msg.resize(sizeof(msg));
+  }
+
   while (!ev_flag) {
     if constexpr (std::is_same_v<T, uint64_t>) {
       raw_msg = msg;
@@ -64,7 +70,8 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
 
     if (prev_msg + 1 != msg) {
       std::cerr << "Unexpected message id: " << msg
-                << ", prev_msg: " << prev_msg << std::endl;
+                << ", prev_msg: " << prev_msg << ", raw_msg: " << raw_msg
+                << std::endl;
     }
     prev_msg = msg;
     if (msg % 100'000'000 != 0)
