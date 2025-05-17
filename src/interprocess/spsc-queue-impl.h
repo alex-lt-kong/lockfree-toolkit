@@ -23,8 +23,6 @@ class SpscQueue : public RingBuffer::IRingBuffer<SpscQueue, std::string> {
 private:
   static constexpr int FLAG_MSG_UNCOMMITTED = -2;
   static constexpr int FLAG_WRAPPED = -1;
-
-protected:
   static constexpr int m_header_size = sizeof(int) * 2;
   int m_queue_size;
   const int m_max_msg_size;
@@ -37,32 +35,27 @@ protected:
   std::unique_ptr<boost::interprocess::mapped_region> m_region;
 
 public:
-  SpscQueue(const std::string &queueName, bool ownership = false,
-            int capacity = 1000, int maxMsgSize = 128)
-      : m_max_msg_size(maxMsgSize), m_ownership(ownership),
-        m_mapped_file_name(queueName) {
-    // Compute MaxElementSize: message length field plus payload,
+  SpscQueue(const std::string &queue_name, const bool ownership = false,
+            const int capacity = 1000, const int max_msg_size = 128)
+      : m_max_msg_size(max_msg_size), m_ownership(ownership),
+        m_mapped_file_name(queue_name) {
+    // m_max_element_size: message length field plus payload,
     // then align to a 4-byte boundary.
     m_max_element_size = m_max_msg_size + sizeof(int);
-    int remainder = m_max_element_size % sizeof(int);
-    if (remainder != 0) {
-      m_max_element_size += (sizeof(int) - remainder);
-    }
-    // QueueSize is defined as capacity * (MaxElementSize + 1)
+    m_max_element_size += sizeof(int) - m_max_element_size % sizeof(int);
     m_queue_size = capacity * (m_max_element_size + 1);
   }
 
   // Disable copy operations.
   SpscQueue(const SpscQueue &) = delete;
-
   SpscQueue &operator=(const SpscQueue &) = delete;
 
-  virtual ~SpscQueue() { dispose(); }
+  ~SpscQueue() { dispose(); }
 
   void init_impl() {
     // Total size = header + queue payload area.
     m_total_size = m_header_size + m_queue_size;
-    int rem = static_cast<int>(m_total_size % sizeof(int));
+    const int rem = static_cast<int>(m_total_size % sizeof(int));
     if (rem != 0) {
       m_total_size += (sizeof(int) - rem); // Align totalSize to 4 bytes.
     }
@@ -99,23 +92,23 @@ public:
   // Enqueues a message. msgBytes is not taken by ownership.
   template <typename U>
     requires std::assignable_from<std::string &, U>
-  bool enqueue_impl(U &msgBytes) {
-    int msgLength = static_cast<int>(msgBytes.size());
+  bool enqueue_impl(U &msg_bytes) {
+    const int msgLength = static_cast<int>(msg_bytes.size());
     if (msgLength > m_max_msg_size) {
       throw std::invalid_argument("Message length exceeds max message size");
     }
 
-    int *head_ptr = reinterpret_cast<int *>(m_base_ptr);
-    int *tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
+    const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
+    const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
     char *data_offset = m_base_ptr + m_header_size;
 
-    std::atomic_ref<int> headAtomic(*head_ptr);
-    std::atomic_ref<int> tailAtomic(*tail_ptr);
-    int head = headAtomic.load(std::memory_order_relaxed);
-    int tail = tailAtomic.load(std::memory_order_relaxed);
+    const std::atomic_ref<int> head_atomic(*head_ptr);
+    const std::atomic_ref<int> tail_atomic(*tail_ptr);
+    const int head = head_atomic.load(std::memory_order_relaxed);
+    const int tail = tail_atomic.load(std::memory_order_relaxed);
 
-    int used = getUsedBytes(head, tail);
-    int free = m_queue_size - used;
+    const int used = getUsedBytes(head, tail);
+    const int free = m_queue_size - used;
     if (free < m_max_element_size * 2)
       return false;
 
@@ -129,7 +122,7 @@ public:
     }
 
     // Write the payload first.
-    std::memcpy(data_offset + msg_offset + sizeof(int), msgBytes.data(),
+    std::memcpy(data_offset + msg_offset + sizeof(int), msg_bytes.data(),
                 msgLength);
     // Then write the length field (with release semantics).
     std::atomic_ref<int> lengthAtomic(
@@ -140,7 +133,7 @@ public:
     int newTail = msg_offset + m_max_element_size;
     if (newTail >= m_queue_size)
       newTail = 0;
-    tailAtomic.store(newTail, std::memory_order_release);
+    tail_atomic.store(newTail, std::memory_order_release);
 
     return true;
   }
@@ -205,15 +198,15 @@ public:
   }
 
   int head_impl() const {
-    int *headPtr = reinterpret_cast<int *>(m_base_ptr);
-    std::atomic_ref<int> headAtomic(*headPtr);
-    return headAtomic.load(std::memory_order_relaxed);
+    const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
+    const std::atomic_ref head_atomic(*head_ptr);
+    return head_atomic.load(std::memory_order_relaxed);
   }
 
   int tail_impl() const {
-    int *tailPtr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
-    std::atomic_ref<int> tailAtomic(*tailPtr);
-    return tailAtomic.load(std::memory_order_relaxed);
+    const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
+    const std::atomic_ref tail_atomic(*tail_ptr);
+    return tail_atomic.load(std::memory_order_relaxed);
   }
 
   void dispose() {

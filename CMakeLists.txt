@@ -10,6 +10,6 @@ find_package(Boost REQUIRED COMPONENTS interprocess)
 include_directories(${Boost_INCLUDE_DIRS})
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/interprocess/)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/interprocess/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/intraprocess/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark/)
