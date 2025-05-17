@@ -3,6 +3,7 @@ project(lockfree-toolkit)
 
 set(CMAKE_CXX_STANDARD 23)
 
+
 find_package(GTest CONFIG REQUIRED COMPONENTS GTest GMock)
 include_directories(${GTEST_INCLUDE_DIRS})
 find_package(Boost REQUIRED COMPONENTS interprocess)
