@@ -1,4 +1,3 @@
-
 #ifndef INTERPROCESS_SPSC_QUEUE_IMPL_H
 #define INTERPROCESS_SPSC_QUEUE_IMPL_H
 
@@ -15,18 +14,17 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
-#include <vector>
 
 namespace RingBuffer::Interprocess {
 
 class SpscQueue : public RingBuffer::IRingBuffer<SpscQueue, std::string> {
 private:
-  static constexpr int FLAG_MSG_UNCOMMITTED = -2;
+  // static constexpr int FLAG_MSG_UNCOMMITTED = -2;
   static constexpr int FLAG_WRAPPED = -1;
   static constexpr int m_header_size = sizeof(int) * 2;
   int m_queue_size;
-  const int m_max_msg_size;
-  int m_max_element_size;
+  // const int m_max_msg_size;
+  // int m_max_element_size;
   char *m_base_ptr = nullptr;
   bool m_ownership;
   std::string m_mapped_file_name;
@@ -36,14 +34,13 @@ private:
 
 public:
   SpscQueue(const std::string &queue_name, const bool ownership = false,
-            const int capacity = 1000, const int max_msg_size = 128)
-      : m_max_msg_size(max_msg_size), m_ownership(ownership),
-        m_mapped_file_name(queue_name) {
+            const int queue_size_bytes = 1000)
+      : m_ownership(ownership), m_mapped_file_name(queue_name) {
     // m_max_element_size: message length field plus payload,
     // then align to a 4-byte boundary.
-    m_max_element_size = m_max_msg_size + sizeof(int);
-    m_max_element_size += sizeof(int) - m_max_element_size % sizeof(int);
-    m_queue_size = capacity * (m_max_element_size + 1);
+    // m_max_element_size = m_max_msg_size + sizeof(int);
+    // m_max_element_size += sizeof(int) - m_max_element_size % sizeof(int);
+    m_queue_size = queue_size_bytes;
   }
 
   // Disable copy operations.
@@ -53,12 +50,10 @@ public:
   ~SpscQueue() { dispose(); }
 
   void init_impl() {
-    // Total size = header + queue payload area.
+    // header + queue payload area.
     m_total_size = m_header_size + m_queue_size;
-    const int rem = static_cast<int>(m_total_size % sizeof(int));
-    if (rem != 0) {
-      m_total_size += (sizeof(int) - rem); // Align totalSize to 4 bytes.
-    }
+    // m_total_size must be aligned to 4 bytes
+    // m_total_size += sizeof(int) - m_total_size % sizeof(int);
 
     // Use Boost.Interprocess to open (or create) and map the memory.
     namespace bip = boost::interprocess;
@@ -78,14 +73,17 @@ public:
     }
 
     // If this process "owns" the queue, initialize it.
+
     if (m_ownership) {
+      std::memset(m_base_ptr, 0, m_total_size);
+      /*
       int *intPtr = reinterpret_cast<int *>(m_base_ptr);
       int numberOfIntegers = static_cast<int>(m_total_size / sizeof(int));
       for (int i = 0; i < numberOfIntegers; i++) {
-        intPtr[i] = FLAG_MSG_UNCOMMITTED;
+        intPtr[i] = 0;
       }
       intPtr[0] = 0; // head initialized to 0.
-      intPtr[1] = 0; // tail initialized to 0.
+      intPtr[1] = 0; // tail initialized to 0.*/
     }
   }
 
@@ -93,104 +91,105 @@ public:
   template <typename U>
     requires std::assignable_from<std::string &, U>
   bool enqueue_impl(U &msg_bytes) {
-    const int msgLength = static_cast<int>(msg_bytes.size());
-    if (msgLength > m_max_msg_size) {
-      throw std::invalid_argument("Message length exceeds max message size");
-    }
-
+    const int msg_length = static_cast<int>(msg_bytes.size());
+    const int element_length = sizeof(int) + msg_length;
     const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
     const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
-    char *data_offset = m_base_ptr + m_header_size;
+    // i.e. the base address of data segment
+    char *data_base = m_base_ptr + m_header_size;
 
-    const std::atomic_ref<int> head_atomic(*head_ptr);
-    const std::atomic_ref<int> tail_atomic(*tail_ptr);
+    const std::atomic_ref head_atomic(*head_ptr);
+    const std::atomic_ref tail_atomic(*tail_ptr);
     const int head = head_atomic.load(std::memory_order_relaxed);
     const int tail = tail_atomic.load(std::memory_order_relaxed);
 
-    const int used = getUsedBytes(head, tail);
+    const int used = get_used_bytes(head, tail);
     const int free = m_queue_size - used;
-    if (free < m_max_element_size * 2)
+    if (free < element_length * 2)
       return false;
 
     int msg_offset = tail;
     // If the message record would not fit contiguously, write a wrap marker.
-    if (msg_offset + m_max_element_size > m_queue_size) {
+    if (msg_offset + element_length > m_queue_size) {
       if (m_queue_size - msg_offset >= static_cast<int>(sizeof(int))) {
-        *reinterpret_cast<int *>(data_offset + msg_offset) = FLAG_WRAPPED;
+        *reinterpret_cast<int *>(data_base + msg_offset) = FLAG_WRAPPED;
       }
       msg_offset = 0;
     }
 
     // Write the payload first.
-    std::memcpy(data_offset + msg_offset + sizeof(int), msg_bytes.data(),
-                msgLength);
+    std::memcpy(data_base + msg_offset + sizeof(int), msg_bytes.data(),
+                msg_length);
+
     // Then write the length field (with release semantics).
-    std::atomic_ref<int> lengthAtomic(
-        *reinterpret_cast<int *>(data_offset + msg_offset));
-    lengthAtomic.store(msgLength, std::memory_order_release);
+    const std::atomic_ref length_atomic(
+        *reinterpret_cast<int *>(data_base + msg_offset));
+    length_atomic.store(msg_length, std::memory_order_release);
 
     // Update the tail pointer, moving by the full slot size.
-    int newTail = msg_offset + m_max_element_size;
-    if (newTail >= m_queue_size)
-      newTail = 0;
-    tail_atomic.store(newTail, std::memory_order_release);
+    int new_tail = msg_offset + element_length;
+    if (new_tail >= m_queue_size)
+      new_tail = 0;
+    tail_atomic.store(new_tail, std::memory_order_release);
 
     return true;
   }
 
   // Dequeues a message. The message is copied into 'buffer'. The function
   // returns the message length, or -1 if no new message is available.
-  bool dequeue_impl(std::string &buffer) {
-    int *headPtr = reinterpret_cast<int *>(m_base_ptr);
-    int *tailPtr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
-    char *queueBase = m_base_ptr + m_header_size;
+  bool dequeue_impl(std::string &buffer) const {
+    const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
+    const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
+    // i.e. the base address of data segment
+    char *queue_base = m_base_ptr + m_header_size;
 
-    std::atomic_ref<int> headAtomic(*headPtr);
-    std::atomic_ref<int> tailAtomic(*tailPtr);
-    int head = headAtomic.load(std::memory_order_relaxed);
-    int tail = tailAtomic.load(std::memory_order_relaxed);
+    const std::atomic_ref head_atomic(*head_ptr);
+    const std::atomic_ref tail_atomic(*tail_ptr);
+    int head = head_atomic.load(std::memory_order_relaxed);
+    const int tail = tail_atomic.load(std::memory_order_relaxed);
 
-    if (head == tail)
-      return false; // No message available.
-
-    int msgLength = *reinterpret_cast<int *>(queueBase + head);
-    // Handle wrap marker.
-    if (msgLength == FLAG_WRAPPED) {
-      head = 0;
-      headAtomic.store(head, std::memory_order_release);
-      msgLength = *reinterpret_cast<int *>(queueBase + head);
+    if (head == tail) {
+      return false; // Queue is empty, no message available.
     }
 
-    if (msgLength == FLAG_MSG_UNCOMMITTED)
-      return false; // Slot allocated but not committed.
+    int msg_length = *reinterpret_cast<int *>(queue_base + head);
 
-    // Mark the slot as uncommitted.
-    *reinterpret_cast<int *>(queueBase + head) = FLAG_MSG_UNCOMMITTED;
+    // Handle wrap marker.
+    if (head + sizeof(msg_length) >= m_queue_size ||
+        /*head + sizeof(msg_length) + msg_length >= m_queue_size ||*/
+        msg_length == FLAG_WRAPPED) {
+      head = 0;
+      head_atomic.store(head, std::memory_order_release);
+      msg_length = *reinterpret_cast<int *>(queue_base + head);
+    }
 
     // Ensure the provided buffer is large enough.
-    if (buffer.size() < static_cast<size_t>(msgLength)) {
-      buffer.resize(msgLength);
+    if (buffer.size() < static_cast<size_t>(msg_length)) {
+      buffer.resize(msg_length);
     }
-    std::memcpy(buffer.data(), queueBase + head + sizeof(int), msgLength);
+    std::memcpy(buffer.data(), queue_base + head + sizeof(int), msg_length);
 
     // Advance the head pointer.
-    int newHead = head + m_max_element_size;
-    headAtomic.store(newHead, std::memory_order_release);
+    int new_head = head + sizeof(msg_length) + msg_length;
+    if (new_head >= m_queue_size)
+      new_head = 0;
+    // std::cout << "head: " << head << ", new_head: " << new_head << std::endl;
+    head_atomic.store(new_head, std::memory_order_release);
     return true;
   }
 
   // Returns the number of used bytes in the queue. If head or tail is not
   // provided, they are re-read.
-  int getUsedBytes(int head = -1, int tail = -1) const {
+  int get_used_bytes(int head = -1, int tail = -1) const {
     if (head == -1) {
-      int *headPtr = reinterpret_cast<int *>(m_base_ptr);
-      std::atomic_ref<int> headAtomic(*headPtr);
-      head = headAtomic.load(std::memory_order_relaxed);
+      const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
+      const std::atomic_ref head_atomic(*head_ptr);
+      head = head_atomic.load(std::memory_order_relaxed);
     }
     if (tail == -1) {
-      int *tailPtr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
-      std::atomic_ref<int> tailAtomic(*tailPtr);
-      tail = tailAtomic.load(std::memory_order_relaxed);
+      const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
+      const std::atomic_ref tail_atomic(*tail_ptr);
+      tail = tail_atomic.load(std::memory_order_relaxed);
     }
     if (tail >= head)
       return tail - head;

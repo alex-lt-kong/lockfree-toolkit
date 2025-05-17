@@ -3,7 +3,6 @@
 
 #include <csignal>
 #include <iostream>
-#include <thread>
 
 using namespace RingBuffer;
 
@@ -14,7 +13,7 @@ int main() {
     perror("signal()");
     return EXIT_FAILURE;
   }
-  auto q = Interprocess::SpscQueue("asdf", true, 100, 15);
+  auto q = Interprocess::SpscQueue("test", true, 171);
   q.init();
   consumer_func(q);
   std::cout << "Exited gracefully\n";

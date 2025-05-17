@@ -14,7 +14,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  auto q = Interprocess::SpscQueue("asdf", false, 100, 15);
+  auto q = Interprocess::SpscQueue("test", false, 171);
   q.init();
   producer_func(q);
   std::cout << "Exited gracefully\n";

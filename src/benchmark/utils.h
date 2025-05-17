@@ -28,7 +28,6 @@ void producer_func(IRingBuffer<TImpl, T> &q) {
   using namespace std::chrono;
   uint32_t msg = 1;
   T raw_msg;
-
   while (!ev_flag) {
     if constexpr (std::is_same_v<T, uint32_t>) {
       raw_msg = msg;
@@ -53,8 +52,7 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
     T raw_msg;
     if (!q.dequeue(raw_msg))
       continue;
-    std::cout << "dequeue()ed, head(): " << q.head() << ", tail(): " << q.tail()
-              << "\n";
+
     uint32_t msg;
     if constexpr (std::is_same_v<T, uint32_t>) {
       msg = raw_msg;
@@ -65,11 +63,19 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
     }
     if (prev_msg + 1 != msg) {
       std::cerr << "Unexpected message id: " << msg
-                << ", prev_msg: " << prev_msg << ", raw_msg: " << raw_msg
-                << std::endl;
+                << ", prev_msg: " << prev_msg << ", raw_msg.size() "
+                << raw_msg.size() << ", q.head():" << q.head()
+                << ", q.tail(): " << q.tail() << std::endl;
+      throw std::logic_error("Unexpected message id");
+    } else {
+      /*
+      std::cout << "  Expected message id: " << msg
+                << ", prev_msg: " << prev_msg << ", raw_msg.size() "
+                << raw_msg.size() << ", q.head():" << q.head()
+                << ", q.tail(): " << q.tail() << std::endl;*/
     }
     prev_msg = msg;
-    if (msg % 100'000'000 != 0)
+    if (msg % 1'000'000 != 0)
       continue;
     const auto t1 =
         duration_cast<milliseconds>(system_clock::now().time_since_epoch())
