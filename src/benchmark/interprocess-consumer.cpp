@@ -14,7 +14,6 @@ int main() {
     return EXIT_FAILURE;
   }
   auto q = Interprocess::SpscQueue("test", true, 171);
-  q.init();
   consumer_func(q);
   std::cout << "Exited gracefully\n";
   return 0;

@@ -15,7 +15,6 @@ int main() {
   }
 
   auto q = Interprocess::SpscQueue("test", false, 171);
-  q.init();
   producer_func(q);
   std::cout << "Exited gracefully\n";
   return 0;
