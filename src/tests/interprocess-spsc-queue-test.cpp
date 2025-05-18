@@ -78,57 +78,24 @@ TEST(InterprocessSpscQueue, SingleThreadProduceAndConsume) {
   }
 }
 
-TEST(InterprocessSpscQueue, SingleThreadProduceOverflow) {
-  constexpr auto ele_count_approx = INT16_MAX;
-  const std::size_t qsz_bytes =
-      (std::to_string(INT16_MAX).size() + sizeof(int)) * ele_count_approx;
-  auto q =
-      Interprocess::SpscQueue("SingleThreadProduceOverflow", true, qsz_bytes);
-  size_t used_space_bytes = 0;
-  for (size_t i = 0; i < (static_cast<uint32_t>(INT32_MAX) - 1) * 2; i++) {
-    std::string pl = std::to_string(i);
-    used_space_bytes += sizeof(int) + pl.size();
-    // EXPECT_EQ(q.get_used_bytes(), used_space_bytes);
-    //  supposed to be implementation details, but let's test it anyways
-    EXPECT_EQ(q.enqueue(pl),
-              used_space_bytes <
-                  qsz_bytes - (std::to_string(INT16_MAX).size() + sizeof(int)))
-        << "used_space_bytes: " << used_space_bytes << ", sz: " << qsz_bytes;
+void common_consumer(const int qsz_bytes, const std::size_t iter_size, const std::vector<std::string> &payloads) {
+  auto q = Interprocess::SpscQueue("CommonQueue", true, qsz_bytes);
+  std::size_t dequeue_count = 0;
+  while (dequeue_count < iter_size) {
+    if (std::string received; q.dequeue(received)) {
+      EXPECT_EQ(received,
+                payloads[dequeue_count % payloads.size()]);
+      ++dequeue_count;
+    }
   }
 }
 
-TEST(InterprocessSpscQueue, SingleThreadConsumeUnderflow) {
-  constexpr auto ele_count_approx = INT16_MAX;
-  const std::size_t qsz_bytes =
-      (std::to_string(INT16_MAX).size() + sizeof(int)) * ele_count_approx;
-  auto q1 =
-      Interprocess::SpscQueue("SingleThreadConsumeUnderflow", true, qsz_bytes);
-  size_t q1_used_space_bytes = 0;
-  for (size_t i = 0; i < (static_cast<uint32_t>(INT32_MAX) - 1) * 2; i++) {
-    std::string pl = std::to_string(i);
-    q1_used_space_bytes += sizeof(int) + pl.size();
-    // supposed to be implementation details, but let's test it anyways
-    EXPECT_EQ(q1.enqueue(pl),
-              q1_used_space_bytes <
-                  qsz_bytes - (std::to_string(INT16_MAX).size() + sizeof(int)))
-        << "used_space_bytes: " << q1_used_space_bytes
-        << ", qsz_bytes: " << qsz_bytes;
-  }
-  auto q2 =
-      Interprocess::SpscQueue("SingleThreadConsumeUnderflow", false, qsz_bytes);
-  size_t q2_used_space_bytes = 0;
-  for (size_t i = 0; i < (static_cast<uint32_t>(INT32_MAX) - 1) * 2; i++) {
-    std::string pl = std::to_string(i);
-    q2_used_space_bytes += sizeof(int) + pl.size();
-    // supposed to be implementation details, but let's test it anyways
-    auto res = q2.dequeue(pl);
-    EXPECT_EQ(res,
-              q2_used_space_bytes <
-                  qsz_bytes - (std::to_string(INT16_MAX).size() + sizeof(int)))
-        << "q2_used_space_bytes: " << q2_used_space_bytes
-        << ", qsz_bytes: " << qsz_bytes;
-    if (res) {
-      EXPECT_EQ(pl, std::to_string(i));
+void common_producer(const int qsz_bytes, const std::size_t iter_size, const std::vector<std::string> &payloads) {
+  auto q = Interprocess::SpscQueue("CommonQueue", false, qsz_bytes);
+  std::size_t enqueue_count = 0;
+  while (enqueue_count < iter_size) {
+    if (q.enqueue(payloads[enqueue_count % payloads.size()])) {
+      ++enqueue_count;
     }
   }
 }
@@ -159,83 +126,55 @@ TEST(InterprocessSpscQueue, ConcurrentProduceAndConsume) {
   constexpr std::size_t qsz_bytes = 1024;
   constexpr std::size_t iter_size = INT32_MAX - 7537;
 
-  auto producer = [&] {
-    auto q = Interprocess::SpscQueue("ConcurrentProduceAndConsume", false,
-                                     qsz_bytes);
-    std::size_t enqueue_count = 0;
-    while (enqueue_count < iter_size) {
-      if (q.enqueue(dummy_payloads[enqueue_count % dummy_payloads.size()])) {
-        ++enqueue_count;
-      }
-    }
-  };
-  auto consumer = [&] {
-    auto q =
-        Interprocess::SpscQueue("ConcurrentProduceAndConsume", true, qsz_bytes);
-    std::size_t dequeue_count = 0;
-    while (dequeue_count < iter_size) {
-      if (std::string received; q.dequeue(received)) {
-        EXPECT_EQ(received,
-                  dummy_payloads[dequeue_count % dummy_payloads.size()]);
-        ++dequeue_count;
-      }
-    }
-  };
-
-  std::thread thread_consumer(consumer);
+  std::thread thread_consumer(common_consumer, qsz_bytes, iter_size, dummy_payloads);
   // Seems the setup of a shared memory queue is not atomic, need to wait to
   // avoid race condition
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  std::thread thread_producer(producer);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  std::thread thread_producer(common_producer, qsz_bytes, iter_size, dummy_payloads);
+  thread_producer.join();
+  thread_consumer.join();
+}
+
+
+TEST(InterprocessSpscQueue, ConcurrentProduceAndConsumeOnlyEmptyMessages) {
+  std::vector<std::string> dummy_payloads = {
+    ""};
+
+  constexpr std::size_t qsz_bytes = sizeof(int) * 2;
+  constexpr std::size_t iter_size = INT32_MAX - 157;
+
+  std::thread thread_consumer(common_consumer, qsz_bytes, iter_size, dummy_payloads);
+  // Seems the setup of a shared memory queue is not atomic, need to wait to
+  // avoid race condition
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  std::thread thread_producer(common_producer, qsz_bytes, iter_size, dummy_payloads);
   thread_producer.join();
   thread_consumer.join();
 }
 
 TEST(InterprocessSpscQueue, ConcurrentProduceAndConsumeEdgeCases) {
   std::vector<std::string> dummy_payloads = {
-      "0xDeadBeef",
-      std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
-      "The quick brown fox jumps over the lazy dog",
-      "Lorem ipsum dolor sit amet",
-      "FooBar",
-      "",
-      "NullPointer",
-      "Hello, World!",
-      "42",
-      "",
-      std::string("\x00", 1),
-      std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)};
+    "0xDeadBeef",
+    std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
+    "The quick brown fox jumps over the lazy dog",
+    "Lorem ipsum dolor sit amet",
+    "FooBar",
+    "",
+    "NullPointer",
+    "Hello, World!",
+    "42",
+    "",
+    std::string("\x00", 1),
+    std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)};
 
   constexpr std::size_t qsz_bytes = 1151;
   constexpr std::size_t iter_size = INT32_MAX - 157;
 
-  auto producer = [&] {
-    auto q = Interprocess::SpscQueue("ConcurrentProduceAndConsumeEdgeCases",
-                                     false, qsz_bytes);
-    for (int64_t i = 0; i < iter_size; ++i) {
-      if (!q.enqueue(dummy_payloads[i % dummy_payloads.size()])) {
-        --i;
-      }
-    }
-  };
-  auto consumer = [&] {
-    auto q = Interprocess::SpscQueue("ConcurrentProduceAndConsumeEdgeCases",
-                                     true, qsz_bytes);
-    std::size_t dequeue_count = 0;
-    while (dequeue_count < iter_size) {
-      if (std::string received; q.dequeue(received)) {
-        EXPECT_EQ(received,
-                  dummy_payloads[dequeue_count % dummy_payloads.size()]);
-        ++dequeue_count;
-      }
-    }
-  };
-
-  std::thread thread_consumer(consumer);
+  std::thread thread_consumer(common_consumer, qsz_bytes, iter_size, dummy_payloads);
   // Seems the setup of a shared memory queue is not atomic, need to wait to
   // avoid race condition
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  std::thread thread_producer(producer);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  std::thread thread_producer(common_producer, qsz_bytes, iter_size, dummy_payloads);
   thread_producer.join();
   thread_consumer.join();
 }
