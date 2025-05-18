@@ -97,7 +97,7 @@ public:
     const std::atomic_ref head_atomic(*head_ptr);
     const std::atomic_ref tail_atomic(*tail_ptr);
     const int head = head_atomic.load(std::memory_order_relaxed);
-    const int tail = tail_atomic.load(std::memory_order_relaxed);
+    const int tail = tail_atomic.load(std::memory_order_acquire);
 
     const int used = get_used_bytes(head, tail);
     const int free = m_queue_size - used;
@@ -138,7 +138,7 @@ public:
 
     const std::atomic_ref head_atomic(*head_ptr);
     const std::atomic_ref tail_atomic(*tail_ptr);
-    int head = head_atomic.load(std::memory_order_relaxed);
+    int head = head_atomic.load(std::memory_order_acquire);
     const int tail = tail_atomic.load(std::memory_order_relaxed);
 
     if (head == tail) {

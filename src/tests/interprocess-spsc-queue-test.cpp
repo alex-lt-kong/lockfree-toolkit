@@ -48,26 +48,26 @@ private:
 TEST(InterprocessSpscQueue,
      SingleThreadBasicProduceThenConsumeWithoutInterface) {
   constexpr std::size_t sz = 63356;
-  auto q1 = Interprocess::SpscQueue("test", true, sz);
+  auto q_con = Interprocess::SpscQueue("test", true, sz);
   {
-    auto q2 = Interprocess::SpscQueue("test", false, sz);
+    auto q_prd = Interprocess::SpscQueue("test", false, sz);
 
     std::string payload = "Hello world!";
-    EXPECT_FALSE(q1.dequeue(payload));
+    EXPECT_FALSE(q_con.dequeue(payload));
 
     // assumption is that item_count will be smaller than 99999
     const auto item_count = sz / (payload.size() + 5 + sizeof(int)) - 1;
     for (std::size_t i = 0; i < item_count; ++i) {
       auto pl = payload + std::to_string(i);
-      EXPECT_TRUE(q1.enqueue(payload + std::to_string(i)));
+      EXPECT_TRUE(q_prd.enqueue(payload + std::to_string(i)));
     }
 
     std::string payload2;
     for (std::size_t i = 0; i < item_count; ++i) {
-      EXPECT_TRUE(q2.dequeue(payload2));
+      EXPECT_TRUE(q_con.dequeue(payload2));
       EXPECT_EQ(payload + std::to_string(i), payload2);
     }
-    EXPECT_FALSE(q2.dequeue(payload2));
+    EXPECT_FALSE(q_con.dequeue(payload2));
   }
 }
 
