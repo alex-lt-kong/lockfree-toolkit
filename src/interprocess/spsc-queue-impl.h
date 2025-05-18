@@ -19,7 +19,6 @@ namespace RingBuffer::Interprocess {
 
 class SpscQueue : public RingBuffer::IRingBuffer<SpscQueue, std::string> {
 private:
-  // static constexpr int FLAG_MSG_UNCOMMITTED = -2;
   static constexpr int FLAG_WRAPPED = -1;
   static constexpr int m_header_size = sizeof(int) * 2;
   int m_queue_size;
@@ -33,27 +32,24 @@ private:
   std::unique_ptr<boost::interprocess::mapped_region> m_region;
 
 public:
-  SpscQueue(const std::string &queue_name, const bool ownership = false,
-            const int queue_size_bytes = 1000)
+  explicit SpscQueue(const std::string &queue_name,
+                     const bool ownership = false,
+                     const int queue_size_bytes = 1000)
       : m_ownership(ownership), m_mapped_file_name(queue_name) {
     // m_max_element_size: message length field plus payload,
     // then align to a 4-byte boundary.
     // m_max_element_size = m_max_msg_size + sizeof(int);
     // m_max_element_size += sizeof(int) - m_max_element_size % sizeof(int);
     m_queue_size = queue_size_bytes;
-
     // header + queue payload area.
     m_total_size = m_header_size + m_queue_size;
-    // m_total_size must be aligned to 4 bytes
-    // m_total_size += sizeof(int) - m_total_size % sizeof(int);
-
     // Use Boost.Interprocess to open (or create) and map the memory.
     namespace bip = boost::interprocess;
 
     m_shm_obj = std::make_unique<bip::shared_memory_object>(
         bip::open_or_create, m_mapped_file_name.c_str(), bip::read_write);
     // Resize the shared memory object.
-    m_shm_obj->truncate(m_total_size);
+    m_shm_obj->truncate(static_cast<long>(m_total_size));
     // Map the entire shared memory object into the process's address space.
     m_region =
         std::make_unique<bip::mapped_region>(*m_shm_obj, bip::read_write);
@@ -113,13 +109,16 @@ public:
       msg_offset = 0;
     }
 
+    // Write data length field then the data itself. Note that these two writes
+    // are not atomic
+    *reinterpret_cast<int *>(data_base + msg_offset) = msg_length;
     // Write the payload first.
     std::memcpy(data_base + msg_offset + sizeof(int), msg_bytes.data(),
                 msg_length);
-    // Then write the length field (with release semantics).
+    /*
     const std::atomic_ref length_atomic(
         *reinterpret_cast<int *>(data_base + msg_offset));
-    length_atomic.store(msg_length, std::memory_order_release);
+    length_atomic.store(msg_length, std::memory_order_release);*/
 
     // Update the tail pointer, moving it by element_length.
     int new_tail = msg_offset + element_length;
