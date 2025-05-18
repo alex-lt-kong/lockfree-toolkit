@@ -41,15 +41,7 @@ public:
     // m_max_element_size = m_max_msg_size + sizeof(int);
     // m_max_element_size += sizeof(int) - m_max_element_size % sizeof(int);
     m_queue_size = queue_size_bytes;
-  }
 
-  // Disable copy operations.
-  SpscQueue(const SpscQueue &) = delete;
-  SpscQueue &operator=(const SpscQueue &) = delete;
-
-  ~SpscQueue() { dispose(); }
-
-  void init_impl() {
     // header + queue payload area.
     m_total_size = m_header_size + m_queue_size;
     // m_total_size must be aligned to 4 bytes
@@ -57,20 +49,15 @@ public:
 
     // Use Boost.Interprocess to open (or create) and map the memory.
     namespace bip = boost::interprocess;
-    try {
-      m_shm_obj = std::make_unique<bip::shared_memory_object>(
-          bip::open_or_create, m_mapped_file_name.c_str(), bip::read_write);
-      // Resize the shared memory object.
-      m_shm_obj->truncate(m_total_size);
-      // Map the entire shared memory object into the process's address space.
-      m_region =
-          std::make_unique<bip::mapped_region>(*m_shm_obj, bip::read_write);
-      m_base_ptr = static_cast<char *>(m_region->get_address());
-    } catch (const std::exception &ex) {
-      throw std::runtime_error(
-          std::string("Boost shared memory initialization failed: ") +
-          ex.what());
-    }
+
+    m_shm_obj = std::make_unique<bip::shared_memory_object>(
+        bip::open_or_create, m_mapped_file_name.c_str(), bip::read_write);
+    // Resize the shared memory object.
+    m_shm_obj->truncate(m_total_size);
+    // Map the entire shared memory object into the process's address space.
+    m_region =
+        std::make_unique<bip::mapped_region>(*m_shm_obj, bip::read_write);
+    m_base_ptr = static_cast<char *>(m_region->get_address());
 
     // If this process "owns" the queue, initialize it.
 
@@ -87,10 +74,19 @@ public:
     }
   }
 
-  // Enqueues a message. msgBytes is not taken by ownership.
+  // Disable copy operations.
+  SpscQueue(const SpscQueue &) = delete;
+  SpscQueue &operator=(const SpscQueue &) = delete;
+
+  ~SpscQueue() { dispose(); }
+
+  void init_impl() {}
+
+  // Enqueues a message.
+  // we cant std::move() in this case
   template <typename U>
     requires std::assignable_from<std::string &, U>
-  bool enqueue_impl(U &msg_bytes) {
+  bool enqueue_impl(U &&msg_bytes) {
     const int msg_length = static_cast<int>(msg_bytes.size());
     const int element_length = sizeof(int) + msg_length;
     const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
