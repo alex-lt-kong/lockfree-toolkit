@@ -7,7 +7,6 @@ using namespace RingBuffer;
 
 int main() {
   auto q = Interprocess::SpscQueue("asdf123", false, (18 + 4) * 2);
-  q.init();
   const std::string bytes = "Hello world!";
   for (int i = 0; i < 110000; ++i) {
     auto payload = bytes + std::to_string(i);
