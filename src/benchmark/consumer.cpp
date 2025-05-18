@@ -5,7 +5,7 @@
 using namespace RingBuffer;
 
 int main() {
-  auto q = Interprocess::SpscQueue("asdf123", true, (18 + 4) * 2);
+  auto q = Interprocess::SpscQueue("asdf123", true, (17 + 4) * 2);
   std::string bytes;
   while (true) {
     // std::this_thread::sleep_for(std::chrono::milliseconds(1));

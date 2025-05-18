@@ -6,13 +6,13 @@
 using namespace RingBuffer;
 
 int main() {
-  auto q = Interprocess::SpscQueue("asdf123", false, (18 + 4) * 2);
+  auto q = Interprocess::SpscQueue("asdf123", false, (17 + 4) * 2);
   const std::string bytes = "Hello world!";
-  for (int i = 0; i < 110000; ++i) {
+  for (int i = 0; i < 11000; ++i) {
     auto payload = bytes + std::to_string(i);
     if (!q.enqueue_impl(payload)) {
       std::cout << "Enqueue() failed at " << i
-                << ", payload.size(): " << payload.size() << "\n";
+          << ", payload.size(): " << payload.size() << "\n";
       --i;
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
