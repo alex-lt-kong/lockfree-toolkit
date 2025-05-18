@@ -149,10 +149,8 @@ TEST(InterprocessSpscQueue, ConcurrentProduceAndConsume) {
 TEST(InterprocessSpscQueue,
      ConcurrentProduceAndConsumeOnlyEmptyMessagesAndTightQueue) {
   std::vector<std::string> dummy_payloads = {""};
-  // TODO: qsz_bytes = sizeof(int) * 2 should work by rights, but it doesnt for
-  // now...
   constexpr std::size_t qsz_bytes = sizeof(int) * 2;
-  constexpr std::size_t iter_size = INT8_MAX - 111;
+  constexpr std::size_t iter_size = INT32_MAX - 7919;
 
   std::thread thread_consumer(common_consumer, qsz_bytes, iter_size,
                               dummy_payloads,
