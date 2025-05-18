@@ -12,8 +12,10 @@ template <typename TImpl, typename T> class IRingBuffer {
 public:
   ~IRingBuffer() = default;
 
-  void init() { static_cast<TImpl *>(this)->init_impl(); }
-
+  ///
+  /// @tparam U a dummy template to enable forwarding reference
+  /// @param item data will be std::move()ed or copied from item to the queue
+  /// @return true if item was enqueued, false if queue is full
   template <typename U>
     requires std::assignable_from<T &, U>
   bool enqueue(U &&item) {
@@ -21,6 +23,9 @@ public:
     return static_cast<TImpl *>(this)->enqueue_impl(std::forward<U>(item));
   }
 
+  ///
+  /// @param item data will be move()ed into item
+  /// @return true if item was dequeued, false if queue is empty
   bool dequeue(T &item) {
     return static_cast<TImpl *>(this)->dequeue_impl(item);
   }
@@ -28,8 +33,6 @@ public:
   int head() { return static_cast<TImpl *>(this)->head_impl(); }
 
   int tail() { return static_cast<TImpl *>(this)->tail_impl(); }
-
-  // virtual int GetUsedBytes(int head = -1, int tail = -1) const = 0;
 };
 
 } // namespace RingBuffer

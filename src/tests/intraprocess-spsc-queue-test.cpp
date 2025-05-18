@@ -45,7 +45,8 @@ private:
   T *m_data;
 };
 
-TEST(RingBufferSPSC, SingleThreadBasicProduceThenConsumeWithoutInterface) {
+TEST(IntreprocessSpscQueue,
+     SingleThreadBasicProduceThenConsumeWithoutInterface) {
   constexpr std::size_t sz = 63356;
   SpscQueue<int> rb(sz);
 
@@ -77,13 +78,13 @@ void func(IRingBuffer<Derived, T> &rb, const size_t sz) {
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
-TEST(RingBufferSPSC, SingleThreadBasicProduceThenConsumeWithInterface) {
+TEST(IntreprocessSpscQueue, SingleThreadBasicProduceThenConsumeWithInterface) {
   constexpr std::size_t sz = 63356;
   auto rb = SpscQueue<int>(sz);
   func(rb, sz);
 }
 
-TEST(RingBufferSPSC, SingleThreadCantCopyMoved) {
+TEST(IntreprocessSpscQueue, SingleThreadCantCopyMoved) {
   constexpr std::size_t sz = 2;
   SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
 
@@ -100,7 +101,7 @@ TEST(RingBufferSPSC, SingleThreadCantCopyMoved) {
   EXPECT_FALSE(rb.dequeue(ele2));
 }
 
-TEST(RingBufferSPSC, FailedMoveShouldNotClearData) {
+TEST(IntreprocessSpscQueue, FailedMoveShouldNotClearData) {
   constexpr std::size_t sz = 2;
   SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
 
@@ -124,7 +125,7 @@ TEST(RingBufferSPSC, FailedMoveShouldNotClearData) {
   }
 }
 
-TEST(RingBufferSPSC, SingleThreadProduceAndConsume) {
+TEST(IntreprocessSpscQueue, SingleThreadProduceAndConsume) {
   constexpr std::size_t sz = 1;
   SpscQueue<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
@@ -135,7 +136,7 @@ TEST(RingBufferSPSC, SingleThreadProduceAndConsume) {
   }
 }
 
-TEST(RingBufferSPSC, SingleThreadCantCopyProduceAndConsume) {
+TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
   constexpr std::size_t sz = INT16_MAX;
   SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
 
@@ -161,7 +162,7 @@ TEST(RingBufferSPSC, SingleThreadCantCopyProduceAndConsume) {
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
-TEST(RingBufferSPSC, SingleThreadProduceOverflow) {
+TEST(IntreprocessSpscQueue, SingleThreadProduceOverflow) {
   constexpr std::size_t sz = INT8_MAX;
   SpscQueue<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
@@ -172,7 +173,7 @@ TEST(RingBufferSPSC, SingleThreadProduceOverflow) {
   }
 }
 
-TEST(RingBufferSPSC, SingleThreadConsumeUnderflow) {
+TEST(IntreprocessSpscQueue, SingleThreadConsumeUnderflow) {
   constexpr std::size_t sz = INT8_MAX;
   SpscQueue<int> rb(sz);
   for (std::size_t i = 0; i < sz * 2; i++) {
@@ -193,7 +194,7 @@ TEST(RingBufferSPSC, SingleThreadConsumeUnderflow) {
   }
 }
 
-TEST(RingBufferSPSC, SPSCCantCopy) {
+TEST(IntreprocessSpscQueue, SPSCCantCopy) {
   constexpr std::size_t sz = INT16_MAX / 4;
   constexpr std::size_t iter_size = INT16_MAX;
   SpscQueue<TestClassNotCopyable<std::pair<int, int>>> rb(sz);
@@ -232,7 +233,7 @@ TEST(RingBufferSPSC, SPSCCantCopy) {
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
-TEST(RingBufferSPSC, SPSCDoesNotForceStdMove) {
+TEST(IntreprocessSpscQueue, SPSCDoesNotForceStdMove) {
   constexpr std::size_t sz = 10;
   SpscQueue<int> rb(sz);
   for (int i = 0; i < sz; ++i) {
@@ -245,7 +246,7 @@ TEST(RingBufferSPSC, SPSCDoesNotForceStdMove) {
   }
 }
 
-TEST(RingBufferSPSC, SPSCSimple) {
+TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
   // sz cant be too small as the context switch can happen very infrequently
   // (experiments show iter_size / 4 is too small)
   constexpr std::size_t iter_size = INT_MAX;

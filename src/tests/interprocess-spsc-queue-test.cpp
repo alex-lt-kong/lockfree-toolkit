@@ -169,3 +169,104 @@ TEST(InterprocessSpscQueue, SingleThreadConsumeUnderflow) {
     }
   }
 }
+
+TEST(InterprocessSpscQueue, ConcurrentProduceAndConsume) {
+  std::vector<std::string> dummy_payloads = {
+      "0xDeadBeef",
+      "The quick brown fox jumps over the lazy dog",
+      "Lorem ipsum dolor sit amet",
+      "FooBar",
+      "NullPointer",
+      "Hello, World!",
+      "42",
+      "Spam and Eggs",
+      "Hack the Planet",
+      "TestString123",
+      "Caffeinate and Dominate",
+      "Underflow_Overflow",
+      "NyanCat42",
+      "TemporaryVariable",
+      "SegFault",
+      "QuantumFoam",
+      "UndefinedBehavior",
+      "CookieMonster",
+      "404NotFound",
+      "MagicNumber"};
+
+  constexpr std::size_t qsz_bytes = 1024;
+  constexpr std::size_t iter_size = INT32_MAX - 7537;
+
+  auto producer = [&] {
+    auto q1 = Interprocess::SpscQueue("ConcurrentProduceAndConsume", false,
+                                      qsz_bytes);
+    // i cant be size_t as we do --i from time to time
+    for (int64_t i = 0; i < iter_size; ++i) {
+      if (!q1.enqueue(dummy_payloads[i % dummy_payloads.size()])) {
+        --i;
+      }
+    }
+  };
+  auto consumer = [&] {
+    auto q2 =
+        Interprocess::SpscQueue("ConcurrentProduceAndConsume", true, qsz_bytes);
+    std::size_t dequeue_count = 0;
+    while (dequeue_count < iter_size) {
+      if (std::string received; q2.dequeue(received)) {
+        EXPECT_EQ(received,
+                  dummy_payloads[dequeue_count % dummy_payloads.size()]);
+        ++dequeue_count;
+      }
+    }
+  };
+
+  std::thread thread2(consumer);
+  std::thread thread1(producer);
+  thread1.join();
+  thread2.join();
+}
+
+TEST(InterprocessSpscQueue, ConcurrentProduceAndConsumeEdgeCases) {
+  std::vector<std::string> dummy_payloads = {
+      "0xDeadBeef",
+      std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
+      "The quick brown fox jumps over the lazy dog",
+      "Lorem ipsum dolor sit amet",
+      "FooBar",
+      "",
+      "NullPointer",
+      "Hello, World!",
+      "42",
+      "",
+      std::string("\x00", 1),
+      std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)};
+
+  constexpr std::size_t qsz_bytes = 1151;
+  constexpr std::size_t iter_size = INT32_MAX - 157;
+
+  auto producer = [&] {
+    auto q1 = Interprocess::SpscQueue("ConcurrentProduceAndConsumeEdgeCases",
+                                      false, qsz_bytes);
+    for (int64_t i = 0; i < iter_size; ++i) {
+      if (!q1.enqueue(dummy_payloads[i % dummy_payloads.size()])) {
+        --i;
+      }
+    }
+  };
+  auto consumer = [&] {
+    auto q2 = Interprocess::SpscQueue("ConcurrentProduceAndConsumeEdgeCases",
+                                      true, qsz_bytes);
+    std::size_t dequeue_count = 0;
+    while (dequeue_count < iter_size) {
+      if (std::string received; q2.dequeue(received)) {
+        EXPECT_EQ(received,
+                  dummy_payloads[dequeue_count % dummy_payloads.size()]);
+        ++dequeue_count;
+      }
+    }
+  };
+
+  std::thread thread2(consumer);
+  std::thread thread1(producer);
+  thread1.join();
+  thread2.join();
+}

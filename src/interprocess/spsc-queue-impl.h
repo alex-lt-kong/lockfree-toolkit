@@ -116,13 +116,12 @@ public:
     // Write the payload first.
     std::memcpy(data_base + msg_offset + sizeof(int), msg_bytes.data(),
                 msg_length);
-
     // Then write the length field (with release semantics).
     const std::atomic_ref length_atomic(
         *reinterpret_cast<int *>(data_base + msg_offset));
     length_atomic.store(msg_length, std::memory_order_release);
 
-    // Update the tail pointer, moving by the full slot size.
+    // Update the tail pointer, moving it by element_length.
     int new_tail = msg_offset + element_length;
     if (new_tail >= m_queue_size)
       new_tail = 0;
@@ -131,8 +130,6 @@ public:
     return true;
   }
 
-  // Dequeues a message. The message is copied into 'buffer'. The function
-  // returns the message length, or -1 if no new message is available.
   bool dequeue_impl(std::string &buffer) const {
     const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
     const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
@@ -176,7 +173,7 @@ public:
 
   // Returns the number of used bytes in the queue. If head or tail is not
   // provided, they are re-read.
-  int get_used_bytes(int head = -1, int tail = -1) const {
+  [[nodiscard]] int get_used_bytes(int head = -1, int tail = -1) const {
     if (head == -1) {
       const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
       const std::atomic_ref head_atomic(*head_ptr);
@@ -192,13 +189,13 @@ public:
     return m_queue_size - (head - tail);
   }
 
-  int head_impl() const {
+  [[nodiscard]] int head_impl() const {
     const auto head_ptr = reinterpret_cast<int *>(m_base_ptr);
     const std::atomic_ref head_atomic(*head_ptr);
     return head_atomic.load(std::memory_order_relaxed);
   }
 
-  int tail_impl() const {
+  [[nodiscard]] int tail_impl() const {
     const auto tail_ptr = reinterpret_cast<int *>(m_base_ptr + sizeof(int));
     const std::atomic_ref tail_atomic(*tail_ptr);
     return tail_atomic.load(std::memory_order_relaxed);
@@ -211,11 +208,6 @@ public:
       // Remove the shared memory object.
       boost::interprocess::shared_memory_object::remove(
           m_mapped_file_name.c_str());
-      std::cout << "This process owns the queue [" << m_mapped_file_name
-                << "], releasing resources." << std::endl;
-    } else {
-      std::cout << "This process does NOT own the queue [" << m_mapped_file_name
-                << "], releasing resources." << std::endl;
     }
     m_base_ptr = nullptr;
   }
