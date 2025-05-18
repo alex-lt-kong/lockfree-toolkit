@@ -68,12 +68,12 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
       throw std::logic_error("Unexpected message id");
     }
     prev_msg = msg;
-    if (msg % 1'000'000 != 0)
+    if (msg % 10'000'000 != 0)
       continue;
     const auto t1 =
         duration_cast<milliseconds>(system_clock::now().time_since_epoch())
             .count();
-    if (t1 - t0 < 1000)
+    if (t1 - t0 < 5000)
       continue;
 
     std::cout << "msg: " << msg << ", throughput: "
