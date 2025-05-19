@@ -1,5 +1,5 @@
-#ifndef INTRAPROCESS_SPSC_QUEUE_IMPL_H
-#define INTRAPROCESS_SPSC_QUEUE_IMPL_H
+#ifndef INTRAPROCESS_SPSC_QUEUE_BETA_IMPL_H
+#define INTRAPROCESS_SPSC_QUEUE_BETA_IMPL_H
 
 #include "../ringbuffer-interface.h"
 
@@ -22,7 +22,8 @@
  * releasing write
  */
 namespace RingBuffer::Intraprocess {
-template <typename T> class SpscQueue : public IRingBuffer<SpscQueue<T>, T> {
+template <typename T>
+class SpscQueueBeta : public IRingBuffer<SpscQueueBeta<T>, T> {
 private:
   /*
     Head/tail could be confusing, usually for FIFO queue, head is when
@@ -44,7 +45,7 @@ private:
 public:
   // we want to distinguish between buffer empty (tail == head) and buffer
   // full (tail + 1 == head), so we need the allocate capacity+1
-  explicit SpscQueue(const size_t capacity)
+  explicit SpscQueueBeta(const size_t capacity)
       : m_capacity(capacity + 1), m_buffer(capacity + 1), m_write_ptr(0),
         m_read_ptr(0) {}
 
@@ -69,21 +70,25 @@ public:
     if (next_tail == m_capacity) {
       next_tail = 0;
     }
-
-    if (const size_t head = m_read_ptr.load(std::memory_order_acquire);
-        next_tail == head) { // tail + 1 == head , i.e., buffer is full
+    const size_t head = m_read_ptr.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if (next_tail == head) { // tail + 1 == head , i.e., buffer is full
       return false;
     }
 
     m_buffer[tail] = std::forward<U>(item);
-    m_write_ptr.store(next_tail, std::memory_order_release);
+    // m_write_ptr.store(next_tail, std::memory_order_release);
+    // Just atomic, no sync.
+    m_write_ptr.store(next_tail, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
     return true;
   }
 
   bool dequeue_impl(T &item) {
     auto head = m_read_ptr.load(std::memory_order_relaxed);
-    if (const auto tail = m_write_ptr.load(std::memory_order_acquire);
-        head == tail) { // head == tail, i.e., buffer is empty
+    const auto tail = m_write_ptr.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if (head == tail) { // head == tail, i.e., buffer is empty
       return false;
     }
 
@@ -92,7 +97,8 @@ public:
       next_head = 0;
     }
     item = std::move(m_buffer[head]);
-    m_read_ptr.store(next_head, std::memory_order_release);
+    m_read_ptr.store(next_head, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
     return true;
   }
 
@@ -116,4 +122,4 @@ public:
 };
 } // namespace RingBuffer::Intraprocess
 
-#endif // INTRAPROCESS_SPSC_QUEUE_IMPL_H
+#endif // INTRAPROCESS_SPSC_QUEUE_BETA_IMPL_H

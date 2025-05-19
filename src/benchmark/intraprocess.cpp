@@ -20,11 +20,13 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  Intraprocess::SpscQueue<uint64_t> q{1'000'000};
+  Intraprocess::SpscQueueBeta<uint64_t> q{1'000'000};
   std::thread thread_consumer(
-      consumer_func<Intraprocess::SpscQueue<uint64_t>, uint64_t>, std ::ref(q));
+      consumer_func<Intraprocess::SpscQueueBeta<uint64_t>, uint64_t>,
+      std ::ref(q));
   std::thread thread_producer(
-      producer_func<Intraprocess::SpscQueue<uint64_t>, uint64_t>, std::ref(q));
+      producer_func<Intraprocess::SpscQueueBeta<uint64_t>, uint64_t>,
+      std::ref(q));
 
   thread_consumer.join();
   thread_producer.join();

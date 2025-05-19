@@ -1,13 +1,16 @@
+#include "../intraprocess/spsc-queue-beta-impl.h"
 #include "../intraprocess/spsc-queue-impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-// #include <format>
 #include <thread>
 
 using namespace RingBuffer;
 using namespace RingBuffer::Intraprocess;
+
+template <typename T> using SpscQueueImpl = SpscQueueBeta<T>;
+// template <typename T>  using SpscQueueImpl = SpscQueue<T>;
 
 template <typename T> class TestClassNotCopyable {
 public:
@@ -22,9 +25,9 @@ public:
     rhs.m_data = nullptr;
   }
 
-  TestClassNotCopyable<T> &operator=(const TestClassNotCopyable &) = delete;
+  TestClassNotCopyable &operator=(const TestClassNotCopyable &) = delete;
 
-  TestClassNotCopyable<T> &operator=(TestClassNotCopyable &&rhs) noexcept {
+  TestClassNotCopyable &operator=(TestClassNotCopyable &&rhs) noexcept {
     if (this != &rhs) {
       delete[] m_data;
       m_data = rhs.m_data;
@@ -48,7 +51,7 @@ private:
 TEST(IntreprocessSpscQueue,
      SingleThreadBasicProduceThenConsumeWithoutInterface) {
   constexpr std::size_t sz = 63356;
-  SpscQueue<int> rb(sz);
+  SpscQueueImpl<int> rb(sz);
 
   int ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -80,13 +83,13 @@ void func(IRingBuffer<Derived, T> &rb, const size_t sz) {
 
 TEST(IntreprocessSpscQueue, SingleThreadBasicProduceThenConsumeWithInterface) {
   constexpr std::size_t sz = 63356;
-  auto rb = SpscQueue<int>(sz);
+  auto rb = SpscQueueImpl<int>(sz);
   func(rb, sz);
 }
 
 TEST(IntreprocessSpscQueue, SingleThreadCantCopyMoved) {
   constexpr std::size_t sz = 2;
-  SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
 
   TestClassNotCopyable<std::string> ele1;
   // rb.dequeue(ele1);
@@ -103,7 +106,7 @@ TEST(IntreprocessSpscQueue, SingleThreadCantCopyMoved) {
 
 TEST(IntreprocessSpscQueue, FailedMoveShouldNotClearData) {
   constexpr std::size_t sz = 2;
-  SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
 
   TestClassNotCopyable<std::string> ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -127,7 +130,7 @@ TEST(IntreprocessSpscQueue, FailedMoveShouldNotClearData) {
 
 TEST(IntreprocessSpscQueue, SingleThreadProduceAndConsume) {
   constexpr std::size_t sz = 1;
-  SpscQueue<int> rb(sz);
+  SpscQueueImpl<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
     EXPECT_TRUE(rb.enqueue(i));
     int ele;
@@ -138,7 +141,7 @@ TEST(IntreprocessSpscQueue, SingleThreadProduceAndConsume) {
 
 TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
   constexpr std::size_t sz = INT16_MAX;
-  SpscQueue<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
 
   TestClassNotCopyable<std::string> ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -164,7 +167,7 @@ TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
 
 TEST(IntreprocessSpscQueue, SingleThreadProduceOverflow) {
   constexpr std::size_t sz = INT8_MAX;
-  SpscQueue<int> rb(sz);
+  SpscQueueImpl<int> rb(sz);
   for (std::size_t i = 0; i < INT16_MAX; i++) {
     if (i < sz)
       EXPECT_TRUE(rb.enqueue(i));
@@ -175,7 +178,7 @@ TEST(IntreprocessSpscQueue, SingleThreadProduceOverflow) {
 
 TEST(IntreprocessSpscQueue, SingleThreadConsumeUnderflow) {
   constexpr std::size_t sz = INT8_MAX;
-  SpscQueue<int> rb(sz);
+  SpscQueueImpl<int> rb(sz);
   for (std::size_t i = 0; i < sz * 2; i++) {
     if (i < sz)
       EXPECT_TRUE(rb.enqueue(i));
@@ -197,7 +200,7 @@ TEST(IntreprocessSpscQueue, SingleThreadConsumeUnderflow) {
 TEST(IntreprocessSpscQueue, SPSCCantCopy) {
   constexpr std::size_t sz = INT16_MAX / 4;
   constexpr std::size_t iter_size = INT16_MAX;
-  SpscQueue<TestClassNotCopyable<std::pair<int, int>>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::pair<int, int>>> rb(sz);
   constexpr std::size_t tsz = 10;
   auto producer = [&] {
     for (std::size_t i = 0; i < iter_size; ++i) {
@@ -235,7 +238,7 @@ TEST(IntreprocessSpscQueue, SPSCCantCopy) {
 
 TEST(IntreprocessSpscQueue, SPSCDoesNotForceStdMove) {
   constexpr std::size_t sz = 10;
-  SpscQueue<int> rb(sz);
+  SpscQueueImpl<int> rb(sz);
   for (int i = 0; i < sz; ++i) {
     EXPECT_TRUE(rb.enqueue(i));
   }
@@ -249,11 +252,11 @@ TEST(IntreprocessSpscQueue, SPSCDoesNotForceStdMove) {
 TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
   // sz cant be too small as the context switch can happen very infrequently
   // (experiments show iter_size / 4 is too small)
-  constexpr std::size_t iter_size = INT_MAX;
-  constexpr std::size_t sz = iter_size / 2;
-  SpscQueue<int> rb(sz);
+  constexpr std::size_t iter_size = 50'593'619;
+  constexpr std::size_t sz = 1000;
+  SpscQueueImpl<int> rb(sz);
   auto producer = [&] {
-    for (std::size_t i = 0; i < iter_size; ++i) {
+    for (int64_t i = 0; i < iter_size; ++i) {
       if (!rb.enqueue(std::move(i)))
         --i;
       // EXPECT_TRUE(rb.enqueue(i));
@@ -262,8 +265,7 @@ TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
   auto consumer = [&] {
     std::size_t dequeue_count = 0;
     while (dequeue_count < iter_size) {
-      int ele;
-      if (rb.dequeue(ele)) {
+      if (int ele; rb.dequeue(ele)) {
         EXPECT_EQ(ele, dequeue_count);
         ++dequeue_count;
       }
@@ -277,5 +279,54 @@ TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
   thread2.join();
 
   int ele;
+  EXPECT_FALSE(rb.dequeue(ele));
+}
+
+TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsumeTightQueue) {
+  std::vector<std::string> payloads = {
+      "0xDeadBeef",
+      std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
+      "The quick brown fox jumps over the lazy dog",
+      "Lorem ipsum dolor sit amet",
+      "FooBar",
+      "",
+      "",
+      std::string("\x00", 1),
+      "",
+      "NullPointer",
+      "Hello, World!",
+      "42",
+      "",
+      std::string("\x00", 1),
+      std::string("\x00\x00", 2),
+      std::string("\x00\x00\x00", 3),
+      std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)};
+
+  constexpr std::size_t iter_size = 60'598'717;
+  constexpr std::size_t sz = 2;
+  SpscQueueImpl<std::string> rb(sz);
+  auto producer = [&] {
+    for (int64_t i = 0; i < iter_size; ++i) {
+      if (!rb.enqueue(payloads[i % payloads.size()]))
+        --i;
+    }
+  };
+  auto consumer = [&] {
+    std::size_t dequeue_count = 0;
+    while (dequeue_count < iter_size) {
+      if (std::string ele; rb.dequeue(ele)) {
+        EXPECT_EQ(ele, payloads[dequeue_count % payloads.size()]);
+        ++dequeue_count;
+      }
+    }
+  };
+
+  std::thread thread1(producer);
+  std::thread thread2(consumer);
+
+  thread1.join();
+  thread2.join();
+
+  std::string ele;
   EXPECT_FALSE(rb.dequeue(ele));
 }
