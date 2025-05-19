@@ -1,7 +1,6 @@
 #include "../intraprocess/spsc-queue-beta-impl.h"
 #include "../intraprocess/spsc-queue-impl.h"
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <thread>

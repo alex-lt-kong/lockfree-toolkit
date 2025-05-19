@@ -1,7 +1,8 @@
-#ifndef PAYLOAD_H
-#define PAYLOAD_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #include "../interprocess/spsc-queue-impl.h"
+#include "../intraprocess/spsc-queue-beta-impl.h"
 #include "../intraprocess/spsc-queue-impl.h"
 #include "../ringbuffer-interface.h"
 
@@ -88,4 +89,4 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
 
 } // namespace RingBuffer
 
-#endif // PAYLOAD_H
+#endif // UTILS_H
