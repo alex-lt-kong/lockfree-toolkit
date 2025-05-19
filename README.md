@@ -80,3 +80,19 @@
       msg: 220000000, throughput: 8.71M msg/sec
       msg: 270000000, throughput: 8.70M msg/sec
       ```
+
+## Notes
+
+1. On x86 (including x86-64), atomic_thread_fence functions issue no CPU
+   instructions and only affect compile-time code motion, except for `std::
+   atomic_thread_fence(std::memory_order_seq_cst)`. <sup>[[std::atomic_thread_fence]](https://en.cppreference.com/w/cpp/atomic/atomic_thread_fence)</sup>
+
+2. On strongly-ordered systems — x86, SPARC TSO, IBM mainframe, etc. —
+   release-acquire ordering is automatic for the majority of operations. No
+   additional CPU instructions are issued for this synchronization mode; only
+   certain compiler optimizations are affected (e.g., the compiler is prohibited
+   from moving non-atomic stores past the atomic store-release or performing
+   non-atomic loads earlier than the atomic load-acquire). On weakly-ordered
+   systems (ARM, Itanium, PowerPC), special CPU load or memory fence
+   instructions are
+   used. <sup>[[std::memory_order]](https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering)</sup>
