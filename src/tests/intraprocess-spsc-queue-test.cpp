@@ -8,10 +8,12 @@
 using namespace RingBuffer;
 using namespace RingBuffer::Intraprocess;
 
-template <typename T> using SpscQueueImpl = SpscQueueBeta<T>;
-// template <typename T>  using SpscQueueImpl = SpscQueue<T>;
+template<typename T>
+using SpscQueueImpl = SpscQueueBeta<T>;
+//using SpscQueueImpl = SpscQueue<T>;
 
-template <typename T> class TestClassNotCopyable {
+template<typename T>
+class TestClassNotCopyable {
 public:
   TestClassNotCopyable() { m_data = new T[1]; }
 
@@ -65,7 +67,7 @@ TEST(IntreprocessSpscQueue,
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
-template <typename Derived, typename T>
+template<typename Derived, typename T>
 void func(IRingBuffer<Derived, T> &rb, const size_t sz) {
   int ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -88,7 +90,7 @@ TEST(IntreprocessSpscQueue, SingleThreadBasicProduceThenConsumeWithInterface) {
 
 TEST(IntreprocessSpscQueue, SingleThreadCantCopyMoved) {
   constexpr std::size_t sz = 2;
-  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string> > rb(sz);
 
   TestClassNotCopyable<std::string> ele1;
   // rb.dequeue(ele1);
@@ -105,7 +107,7 @@ TEST(IntreprocessSpscQueue, SingleThreadCantCopyMoved) {
 
 TEST(IntreprocessSpscQueue, FailedMoveShouldNotClearData) {
   constexpr std::size_t sz = 2;
-  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string> > rb(sz);
 
   TestClassNotCopyable<std::string> ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -140,7 +142,7 @@ TEST(IntreprocessSpscQueue, SingleThreadProduceAndConsume) {
 
 TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
   constexpr std::size_t sz = INT16_MAX;
-  SpscQueueImpl<TestClassNotCopyable<std::string>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::string> > rb(sz);
 
   TestClassNotCopyable<std::string> ele;
   EXPECT_FALSE(rb.dequeue(ele));
@@ -199,11 +201,11 @@ TEST(IntreprocessSpscQueue, SingleThreadConsumeUnderflow) {
 TEST(IntreprocessSpscQueue, SPSCCantCopy) {
   constexpr std::size_t sz = INT16_MAX / 4;
   constexpr std::size_t iter_size = INT16_MAX;
-  SpscQueueImpl<TestClassNotCopyable<std::pair<int, int>>> rb(sz);
+  SpscQueueImpl<TestClassNotCopyable<std::pair<int, int> > > rb(sz);
   constexpr std::size_t tsz = 10;
   auto producer = [&] {
     for (std::size_t i = 0; i < iter_size; ++i) {
-      auto t = TestClassNotCopyable<std::pair<int, int>>(tsz);
+      auto t = TestClassNotCopyable<std::pair<int, int> >(tsz);
       for (int j = 0; j < tsz; j++) {
         t.set(j, {i, j});
       }
@@ -214,7 +216,7 @@ TEST(IntreprocessSpscQueue, SPSCCantCopy) {
   auto consumer = [&] {
     std::size_t dequeue_count = 0;
     while (dequeue_count < iter_size) {
-      TestClassNotCopyable<std::pair<int, int>> ele;
+      TestClassNotCopyable<std::pair<int, int> > ele;
       if (rb.dequeue(ele)) {
         for (int j = 0; j < tsz; j++) {
           EXPECT_EQ(ele.get(j).first, dequeue_count);
@@ -231,7 +233,7 @@ TEST(IntreprocessSpscQueue, SPSCCantCopy) {
   thread1.join();
   thread2.join();
 
-  TestClassNotCopyable<std::pair<int, int>> ele;
+  TestClassNotCopyable<std::pair<int, int> > ele;
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
@@ -249,22 +251,21 @@ TEST(IntreprocessSpscQueue, SPSCDoesNotForceStdMove) {
 }
 
 TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
-  // sz cant be too small as the context switch can happen very infrequently
-  // (experiments show iter_size / 4 is too small)
-  constexpr std::size_t iter_size = 50'593'619;
-  constexpr std::size_t sz = 1000;
-  SpscQueueImpl<int> rb(sz);
+  // large iter_size takes time to complete, but it can expose rare race condition!
+  constexpr std::uint64_t iter_size = 5'735'955'187;
+  constexpr std::size_t qsz = 37;
+  SpscQueueImpl<uint64_t> rb(qsz);
   auto producer = [&] {
-    for (int64_t i = 0; i < iter_size; ++i) {
-      if (!rb.enqueue(std::move(i)))
-        --i;
-      // EXPECT_TRUE(rb.enqueue(i));
+    uint64_t enqueue_count = 0;
+    while (enqueue_count < iter_size) {
+      if (rb.enqueue(enqueue_count))
+        ++enqueue_count;
     }
   };
   auto consumer = [&] {
-    std::size_t dequeue_count = 0;
+    uint64_t dequeue_count = 0;
     while (dequeue_count < iter_size) {
-      if (int ele; rb.dequeue(ele)) {
+      if (uint64_t ele; rb.dequeue(ele)) {
         EXPECT_EQ(ele, dequeue_count);
         ++dequeue_count;
       }
@@ -277,41 +278,44 @@ TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsume) {
   thread1.join();
   thread2.join();
 
-  int ele;
+  uint64_t ele;
   EXPECT_FALSE(rb.dequeue(ele));
 }
 
 TEST(IntreprocessSpscQueue, SPSCConcurrentProduceAndConsumeTightQueue) {
   std::vector<std::string> payloads = {
-      "0xDeadBeef",
-      std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
-      "The quick brown fox jumps over the lazy dog",
-      "Lorem ipsum dolor sit amet",
-      "FooBar",
-      "",
-      "",
-      std::string("\x00", 1),
-      "",
-      "NullPointer",
-      "Hello, World!",
-      "42",
-      "",
-      std::string("\x00", 1),
-      std::string("\x00\x00", 2),
-      std::string("\x00\x00\x00", 3),
-      std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)};
+    "0xDeadBeef",
+    std::string("\x00\x12\x34\x56\x78\x9A\xBC\xDE", 8),
+    "The quick brown fox jumps over the lazy dog",
+    "Lorem ipsum dolor sit amet",
+    "FooBar",
+    "",
+    "",
+    std::string("\x00", 1),
+    "",
+    "NullPointer",
+    "Hello, World!",
+    "42",
+    "",
+    std::string("\x00", 1),
+    std::string("\x00\x00", 2),
+    std::string("\x00\x00\x00", 3),
+    std::string("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 11)
+  };
 
-  constexpr std::size_t iter_size = 60'598'717;
-  constexpr std::size_t sz = 2;
-  SpscQueueImpl<std::string> rb(sz);
+  // large iter_size takes time to complete, but it can expose rare race condition!
+  constexpr uint64_t iter_size = 5'935'955'521;
+  constexpr std::size_t qsz = 2;
+  SpscQueueImpl<std::string> rb(qsz);
   auto producer = [&] {
-    for (int64_t i = 0; i < iter_size; ++i) {
-      if (!rb.enqueue(payloads[i % payloads.size()]))
-        --i;
+    uint64_t enqueue_count = 0;
+    while (enqueue_count < iter_size) {
+      if (rb.enqueue(payloads[enqueue_count % payloads.size()]))
+        ++enqueue_count;
     }
   };
   auto consumer = [&] {
-    std::size_t dequeue_count = 0;
+    uint64_t dequeue_count = 0;
     while (dequeue_count < iter_size) {
       if (std::string ele; rb.dequeue(ele)) {
         EXPECT_EQ(ele, payloads[dequeue_count % payloads.size()]);
