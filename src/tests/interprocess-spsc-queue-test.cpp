@@ -1,4 +1,5 @@
 #include "../interprocess/spsc-queue-impl.h"
+#include "../interprocess/spsc-queue-beta-impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -7,14 +8,16 @@
 #include <thread>
 
 using namespace RingBuffer;
-// using namespace RingBuffer::Interprocess;
+
+using SpscQueueImpl = Interprocess::SpscQueueBeta;
+//using SpscQueueImpl = SpscQueue;
 
 TEST(InterprocessSpscQueue,
      SingleThreadBasicProduceThenConsumeWithoutInterface) {
   constexpr std::size_t sz = 63356;
-  auto q_con = Interprocess::SpscQueue("test", true, sz);
+  auto q_con = SpscQueueImpl("test", true, sz);
   {
-    auto q_prd = Interprocess::SpscQueue("test", false, sz);
+    auto q_prd = SpscQueueImpl("test", false, sz);
 
     std::string payload = "Hello world!";
     EXPECT_FALSE(q_con.dequeue(payload));
@@ -37,7 +40,7 @@ TEST(InterprocessSpscQueue,
 
 template <typename Derived, typename T>
 void func(IRingBuffer<Derived, T> &q1, const size_t sz) {
-  auto q2 = Interprocess::SpscQueue("test", false, sz);
+  auto q2 = SpscQueueImpl("test", false, sz);
 
   std::string payload = "Hello world!";
   EXPECT_FALSE(q1.dequeue(payload));
@@ -59,16 +62,16 @@ void func(IRingBuffer<Derived, T> &q1, const size_t sz) {
 
 TEST(InterprocessSpscQueue, SingleThreadBasicProduceThenConsumeWithInterface) {
   constexpr std::size_t sz = 63356;
-  auto q1 = Interprocess::SpscQueue("test", true, sz);
+  auto q1 = SpscQueueImpl("test", true, sz);
   func(q1, sz);
 }
 
 TEST(InterprocessSpscQueue, SingleThreadProduceAndConsume) {
   const std::size_t sz = (std::to_string(INT16_MAX).size() + 4) * 2;
-  auto q1 = Interprocess::SpscQueue("SingleThreadProduceAndConsume", true, sz);
+  auto q1 = SpscQueueImpl("SingleThreadProduceAndConsume", true, sz);
   {
     auto q2 =
-        Interprocess::SpscQueue("SingleThreadProduceAndConsume", false, sz);
+        SpscQueueImpl("SingleThreadProduceAndConsume", false, sz);
     for (std::size_t i = 0; i < INT16_MAX; i++) {
       EXPECT_TRUE(q1.enqueue(std::to_string(i)));
       std::string received;
@@ -81,7 +84,7 @@ TEST(InterprocessSpscQueue, SingleThreadProduceAndConsume) {
 void common_consumer(const int qsz_bytes, const std::size_t iter_size,
                      const std::vector<std::string> &payloads,
                      const std::string &queue_name) {
-  auto q = Interprocess::SpscQueue(queue_name, true, qsz_bytes);
+  auto q = SpscQueueImpl(queue_name, true, qsz_bytes);
   std::size_t dequeue_count = 0;
   while (dequeue_count < iter_size) {
     // std::cout << "dequeue()ing..." << dequeue_count << std::endl;
@@ -97,7 +100,7 @@ void common_consumer(const int qsz_bytes, const std::size_t iter_size,
 void common_producer(const int qsz_bytes, const std::size_t iter_size,
                      const std::vector<std::string> &payloads,
                      const std::string &queue_name) {
-  auto q = Interprocess::SpscQueue(queue_name, false, qsz_bytes);
+  auto q = SpscQueueImpl(queue_name, false, qsz_bytes);
   std::size_t enqueue_count = 0;
   while (enqueue_count < iter_size) {
     // std::cout << "enqueue()ing..." << enqueue_count << std::endl;
