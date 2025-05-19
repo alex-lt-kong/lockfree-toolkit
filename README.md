@@ -13,11 +13,11 @@
 - `AMD Ryzen 5 PRO 6650U` + `gcc 14.2.0`:
     - Intraprocess::SpscQueue:
       ```    
-      msg: 3270000000, throughput: 95.9M msg/sec
-      msg: 3760000000, throughput: 96.2M msg/sec
-      msg: 4260000000, throughput: 98.3M msg/sec
-      msg: 4740000000, throughput: 95.9M msg/sec
-      msg: 5230000000, throughput: 97.9M msg/ses
+      msg: 1930000000, throughput: 101.3M msg/sec
+      msg: 2450000000, throughput: 103.6M msg/sec
+      msg: 2970000000, throughput: 102.7M msg/sec
+      msg: 3480000000, throughput: 101.1M msg/sec
+      msg: 4000000000, throughput: 102.9M msg/sec
       ```
 
     - Interprocess::SpscQueue:

@@ -6,7 +6,6 @@
 #include "../ringbuffer-interface.h"
 
 #include <chrono>
-#include <cstdint>
 #include <cstring>
 #include <type_traits>
 
@@ -76,10 +75,11 @@ void consumer_func(IRingBuffer<TImpl, T> &q) {
     if (t1 - t0 < 5000)
       continue;
 
-    std::cout << "msg: " << msg << ", throughput: "
-              << std::format("{:.1f}",
-                             (msg - t0_id) / 1'000'000.0 / ((t1 - t0) / 1000.0))
-              << "M msg/sec\n";
+    std::cout << "msg: " << msg << ", throughput: " << std::fixed
+              << std::setprecision(2)
+              << (msg - t0_id) / 1'000'000.0 / ((t1 - t0) / 1000.0)
+              << "M msg/sec\n"
+              << std::defaultfloat;
     t0 = t1;
     t0_id = msg;
   }

@@ -14,7 +14,8 @@ using namespace RingBuffer;
 constexpr size_t q_size = INT16_MAX;
 
 int main() {
-  if (signal(SIGINT, handle_signal) == SIG_ERR) {
+  if (signal(SIGINT, handle_signal) == SIG_ERR ||
+      signal(SIGTERM, handle_signal) == SIG_ERR) {
     perror("signal()");
     return EXIT_FAILURE;
   }

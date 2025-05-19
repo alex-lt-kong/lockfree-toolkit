@@ -3,7 +3,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <format>
+// #include <format>
 #include <thread>
 
 using namespace RingBuffer;
@@ -112,14 +112,14 @@ TEST(IntreprocessSpscQueue, FailedMoveShouldNotClearData) {
     constexpr std::size_t tsz = 10;
     TestClassNotCopyable<std::string> t{tsz};
     for (std::size_t j = 0; j < tsz; j++) {
-      t.set(j, std::format("test_string {}", j));
+      t.set(static_cast<int>(j), "test_string " + std::to_string(j));
     }
     if (i < rb.capacity())
       EXPECT_TRUE(rb.enqueue(std::move(t)));
     else {
       EXPECT_FALSE(rb.enqueue(std::move(t)));
       for (std::size_t j = 0; j < tsz; j++) {
-        EXPECT_EQ(t.get(j), std::format("test_string {}", j));
+        EXPECT_EQ(t.get(j), "test_string " + std::to_string(j));
       }
     }
   }
@@ -147,7 +147,7 @@ TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
   for (std::size_t i = 0; i < rb.capacity(); i++) {
     TestClassNotCopyable<std::string> t{tsz};
     for (int j = 0; j < tsz; j++) {
-      t.set(j, std::format("{}/{}", i, j));
+      t.set(j, std::to_string(i) + "/" + std::to_string(j));
     }
     EXPECT_TRUE(rb.enqueue(std::move(t)));
   }
@@ -155,7 +155,7 @@ TEST(IntreprocessSpscQueue, SingleThreadCantCopyProduceAndConsume) {
     TestClassNotCopyable<std::string> ele;
     EXPECT_TRUE(rb.dequeue(ele));
     for (int j = 0; j < tsz; j++) {
-      EXPECT_EQ(ele.get(j), std::format("{}/{}", i, j));
+      EXPECT_EQ(ele.get(j), std::to_string(i) + "/" + std::to_string(j));
     }
   }
 
