@@ -9,10 +9,8 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <string>
-#include <thread>
 
 namespace RingBuffer::Interprocess {
   class SpscQueueBeta : public IRingBuffer<SpscQueueBeta, std::string> {
@@ -76,8 +74,6 @@ namespace RingBuffer::Interprocess {
 
       const std::atomic_ref head_atomic(*head_ptr);
       const std::atomic_ref tail_atomic(*tail_ptr);
-      // for head_atomic.load(), std::memory_order_relaxed works on x86 but breaks
-      // on ARM64
       std::atomic_thread_fence(std::memory_order_acquire);
       const int head = head_atomic.load(std::memory_order_relaxed);
       const int tail = tail_atomic.load(std::memory_order_relaxed);

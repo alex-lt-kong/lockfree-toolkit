@@ -101,7 +101,7 @@ namespace RingBuffer::Intraprocess {
 
       std::atomic_thread_fence(std::memory_order_release);
       m_read_ptr.store(next_head, std::memory_order_relaxed);
-      // everything else the same, moving std::atomic_thread_fence() to above m_read_ptr.store() breaks the queue.
+      // everything else the same, moving std::atomic_thread_fence() to below m_read_ptr.store() breaks the queue.
       return true;
     }
 
