@@ -10,10 +10,11 @@
 
 ## Performance
 
-- x86 has some memory order. Many subtle issues won't expose on it. Therefore, we intentionally run the queue on a wide
+- x86 has some memory order. Many subtle issues won't expose on it. Therefore,
+  we intentionally run the queue on a wide
   variety of architectures + compilers
 
-### x86
+### x86_64
 
 - `Intel(R) Core(TM) i7-14700` + `MSVC 14.43.34808`
     - Intraprocess::SpscQueue:
@@ -46,6 +47,8 @@
       msg: 792000000, throughput: 32.5M msg/sec   
       ```
 
+### aarch64
+
 - `Ampere Altra Max M128-30` (vCPU) + `clang 18.1.3`
 
     - Intraprocess::SpscQueue:
@@ -60,4 +63,20 @@
       msg: 1380000000, throughput: 10.04M msg/sec
       msg: 1440000000, throughput: 10.68M msg/sec
       msg: 1500000000, throughput: 11.28M msg/sec
+      ```
+
+- `Cortex-A53` + `gcc 12.2.0`
+
+    - Intraprocess::SpscQueue:
+      ```
+      msg: 2450000000, throughput: 25.80M msg/sec
+      msg: 2580000000, throughput: 25.87M msg/sec
+      msg: 2710000000, throughput: 25.82M msg/sec
+      ```
+
+    - Interprocess::SpscQueue:
+      ```
+      msg: 170000000, throughput: 8.70M msg/sec
+      msg: 220000000, throughput: 8.71M msg/sec
+      msg: 270000000, throughput: 8.70M msg/sec
       ```
