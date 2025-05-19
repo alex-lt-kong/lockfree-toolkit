@@ -1,6 +1,5 @@
 #include "utils.h"
 
-#include <chrono>
 #include <csignal>
 #include <cstddef>
 #include <cstdint>
@@ -10,8 +9,8 @@
 
 using namespace RingBuffer;
 
-template <typename T> using SpscQueueImpl = Intraprocess::SpscQueueBeta<T>;
-// template <typename T>  using SpscQueueImpl = Intraprocess::SpscQueue<T>;
+//template <typename T> using SpscQueueImpl = Intraprocess::SpscQueueBeta<T>;
+template <typename T>  using SpscQueueImpl = Intraprocess::SpscQueue<T>;
 
 constexpr size_t q_size = INT16_MAX;
 
