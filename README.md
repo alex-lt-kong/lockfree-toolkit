@@ -10,9 +10,9 @@
 
 ## Performance
 
-- x86 has some memory order. Many subtle issues won't expose on it. Therefore,
-  we intentionally run the queue on a wide
-  variety of architectures + compilers
+- x86 has some of the strongest memory order among common architectures. Many
+  subtle issues won't expose on it. Therefore, we intentionally run the queue on
+  a wide variety of architectures + compilers
 
 ### x86_64
 
