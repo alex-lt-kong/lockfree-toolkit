@@ -29,7 +29,6 @@
       msg: 350000000, throughput: 45.60M msg/sec
       msg: 580000000, throughput: 45.39M msg/sec
       msg: 810000000, throughput: 45.51M msg/sec
-
       ```
 
 - `AMD Ryzen 5 PRO 6650U` + `gcc 14.2.0`
