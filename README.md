@@ -8,6 +8,14 @@
     - A lock-free **inter**process Single-Producer-Single-Consumer bounded
       queue (ring buffer)
 
+## Build
+
+```
+mkdir build && cd build
+cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release -j 4
+```
+
 ## Performance
 
 - x86 has some of the strongest memory order among common architectures. Many
@@ -78,6 +86,24 @@
       msg: 170000000, throughput: 8.70M msg/sec
       msg: 220000000, throughput: 8.71M msg/sec
       msg: 270000000, throughput: 8.70M msg/sec
+      ```
+
+### riscv64
+
+- `JH7110` + `clang 18.1.3`
+
+    - Intraprocess::SpscQueue:
+      ```
+      msg: 13300000000, throughput: 13.15M msg/sec
+      msg: 13370000000, throughput: 13.13M msg/sec
+      msg: 13440000000, throughput: 13.14M msg/sec
+      ```
+
+    - Interprocess::SpscQueue:
+      ```
+      msg: 200000000, throughput: 4.09M msg/sec
+      msg: 230000000, throughput: 4.09M msg/sec
+      msg: 260000000, throughput: 4.09M msg/sec
       ```
 
 ## Notes
