@@ -13,3 +13,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/interprocess/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/tests/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark/)
+
+# Install all headers from the include/ directory
+install(DIRECTORY src/interprocess/ DESTINATION include/interprocess)
+install(DIRECTORY src/intraprocess/ DESTINATION include/intraprocess)
