@@ -11,7 +11,8 @@
 ## Build
 
 ```
-mkdir build && cd build
+mkdir build && cd build 
+# export VCPKG_MAX_CONCURRENCY=1
 cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
 cmake --build . --config Release -j 4
 cmake --install . [--prefix /your/custom/path]
