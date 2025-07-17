@@ -15,5 +15,11 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/tests/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark/)
 
 # Install all headers from the include/ directory
-install(DIRECTORY src/interprocess/ DESTINATION include/interprocess)
-install(DIRECTORY src/intraprocess/ DESTINATION include/intraprocess)
+install(
+    DIRECTORY src/
+    DESTINATION include/lockfree-toolkit
+    FILES_MATCHING
+    PATTERN "ringbuffer-interface.h"
+    PATTERN "interprocess/*"
+    PATTERN "intraprocess/*"
+)
